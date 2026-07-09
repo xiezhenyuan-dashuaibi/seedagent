@@ -120,7 +120,7 @@ ROUTED_SYSTEM_PROMPT_TEMPLATE = """# 任务背景说明
 
 <commentary>消息</commentary>
 - 运行时效果：立刻把 `消息` 流式展示给用户，同时你继续工作。
-- 只用于简短的进度更新。
+- 用于简短的进度更新，或者在“观察-思考-行动”的循环中进行观察后的思考与决策，展现工作中的严谨的思维链过程。
 
 <python_run>
 Python 代码
