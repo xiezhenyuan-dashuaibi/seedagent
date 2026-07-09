@@ -7,6 +7,7 @@ from typing import Any, Iterable
 
 from dotenv import load_dotenv
 from smolagents.memory import ActionStep, FinalAnswerStep, PlanningStep
+from smolagents.monitoring import LogLevel
 
 try:
     import readline  # noqa: F401
@@ -146,7 +147,7 @@ def build_seed_agent(args: argparse.Namespace, router: RuntimeEventRouter) -> Se
         additional_authorized_imports=_authorized_imports(args),
         code_block_tags=("<python_run>", "</python_run>"),
         stream_outputs=False,
-        verbosity_level=0,
+        verbosity_level=LogLevel.OFF,
     )
 
 

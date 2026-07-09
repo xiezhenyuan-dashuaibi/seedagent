@@ -15,6 +15,35 @@ class RuntimeEvent:
 EventHandler = Callable[[RuntimeEvent], None]
 
 
+def _one_line(text: str, *, max_length: int = 180) -> str:
+    line = " ".join(text.splitlines()[0].split()) if text.splitlines() else ""
+    if len(line) <= max_length:
+        return line
+    return line[: max_length - 3].rstrip() + "..."
+
+
+def _terminal_error_summary(message: Any) -> tuple[str, str]:
+    text = str(message or "").strip()
+    if not text:
+        return "error", ""
+
+    if "Authorized imports are:" in text:
+        return "forbidden", _one_line(text.split("Authorized imports are:", 1)[0].rstrip())
+
+    forbidden_markers = (
+        "InterpreterError: Import of ",
+        "Forbidden access to ",
+        "Forbidden function ",
+        "Shell command blocked",
+        "not allowed by shell policy",
+        "not allowed by sandbox policy",
+    )
+    if any(marker in text for marker in forbidden_markers):
+        return "forbidden", _one_line(text)
+
+    return "error", text
+
+
 class RuntimeEventRouter:
     """Small synchronous event bus for terminal-visible agent runtime events."""
 
@@ -40,9 +69,12 @@ class TerminalRenderer:
         self._commentary_open = False
         self._final_open = False
         self._streamed_final_text = ""
+        self._last_error_display: tuple[str, str] | None = None
 
     def __call__(self, event: RuntimeEvent) -> None:
         handler = getattr(self, f"_on_{event.type}", None)
+        if event.type != "error":
+            self._last_error_display = None
         if handler is None:
             if self.show_model_trace:
                 print(f"[{event.type}] {event.payload}")
@@ -77,6 +109,7 @@ class TerminalRenderer:
     def _on_run_started(self, event: RuntimeEvent) -> None:
         self._close_open_lines()
         self._streamed_final_text = ""
+        self._last_error_display = None
 
     def _on_commentary_delta(self, event: RuntimeEvent) -> None:
         text = event.payload.get("text") or ""
@@ -151,7 +184,12 @@ class TerminalRenderer:
 
     def _on_error(self, event: RuntimeEvent) -> None:
         self._close_open_lines()
-        print(f"error> {event.payload.get('message', '')}")
+        label, message = _terminal_error_summary(event.payload.get("message", ""))
+        display = (label, message)
+        if display == self._last_error_display:
+            return
+        self._last_error_display = display
+        print(f"{label}> {message}")
 
 
 __all__ = ["RuntimeEvent", "RuntimeEventRouter", "TerminalRenderer"]
